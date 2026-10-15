@@ -1031,7 +1031,7 @@
 <div class="shell">
 
   <div id="landing" class="landing">
-    <div class="section-head"><span class="section-title"><span class="dot"></span>Stat Corner</span><span class="section-note">today's nationwide outliers</span></div>
+    <div class="section-head"><span class="section-title"><span class="dot"></span>Stat Corner</span><span class="section-note" id="statCornerNote">today's nationwide outliers</span></div>
     <div id="statCorner" class="stat-corner"></div>
 
     <div class="view-tabs">
@@ -1039,9 +1039,11 @@
       <button class="view-tab" data-view="players">Player Leaderboard</button>
       <button class="view-tab" data-view="zones">Shot Zones</button>
       <button class="view-tab" data-view="confs">Conferences</button>
-      <button class="view-tab" data-view="predict">2026-27 Projections</button>
+      <button class="view-tab" data-view="predict">Predictions</button>
       <button id="compareOpenBtn" class="filter-reset" style="margin-left:auto;">Compare Teams ⇄</button>
     </div>
+
+    <p id="seasonNotice" class="pw-note" style="display:none; margin:0 0 10px; font-size:12.5px;"></p>
 
     <div id="viewTeams" class="view-panel">
     <button class="filter-bar-toggle" id="rankFilterBarToggle" type="button" aria-expanded="false">
@@ -1121,6 +1123,7 @@
       <div class="stat-filter" id="rankStatFilter"></div>
     </div>
     <div class="panel">
+      <p id="rankPreNote" class="pw-note" style="display:none; margin:0 0 10px; font-size:12.5px;"></p>
       <span class="pct-legend" title="Shading recomputes on every render against whichever teams/window are currently shown -- it's never fixed against every D1 team's full season." style="margin-bottom:8px;">Worst <span class="bar"></span> Best</span>
       <div class="tbl-scroll rankings-scroll">
         <table class="rankings-table collapsible-table" id="rankingsTable"><thead><tr id="rankingsHead"></tr></thead><tbody id="rankingsBody"></tbody></table>
@@ -1394,7 +1397,7 @@
           <div id="styleTag" class="style-tag"></div>
           <div id="rankPill" class="rank-pill" style="display:none;">
             <span class="n" id="rankPillNum"></span>
-            <span>national Torvik-style rank</span>
+            <span id="rankPillLbl">national Torvik-style rank</span>
           </div>
         </div>
       </div>
@@ -1582,7 +1585,7 @@
       </div>
     </div>
 
-    <div class="footnote">Four factors, KPI cards, and Player Stats all reflect the filters above (default: full season), including Player(s): pick one or more and set them to "Played (in)" or "Did not play (out)" to see how the team's numbers shift with a player available vs. missing -- e.g. to gauge an injury's impact. "All selected" requires every picked player to match; "Any selected" needs just one. Overall rank, Adj. Offense, Adj. Defense, and Tempo come from the same opponent-adjusted ridge model as the Projections tab (fitted in the build on every D1 game, home court fitted, neutral sites from the schedule; once the projected season is under way, results plus the preseason projection), and are not affected by any filter, player or otherwise — that model's output can't be meaningfully recomputed from a game subset. The identity blurb up top, and Luck / WAB / Havoc Rate / Assist Rate / Quad Record below, are all season-long for the same reason. WAB (Wins Above Bubble) and the Quad Record use OUR rank, not the NCAA committee's official NET or the committee's own review of the Quad cut lines each year -- treat both as a close approximation, not an official number. Luck is wins above what points-for/points-against (a standard Pythagorean formula, D1 games only) would predict -- a helpful regression flag, not a judgment; an "unlucky" team isn't a bad one. Team Profile ranks and the 3PT Rate / TOV% / eFG% KPI ranks ARE recomputed live among all D1 teams, but only under the Location/Games/Opponent-rank/Conference filters -- a roster is specific to this team, so the Player(s) filter narrows this team's own numbers without changing what it's being ranked against. Each Team Profile row is shaded by that same live percentile. In the Game Log, click a date for that game's full recap (box scores, game flow, what decided it, standout performances), or an opponent's name to jump to their own dashboard (when they're a tracked D1 team). ORtg/DRtg are per-game estimates (points per 100 possessions, from that game's own box score), shaded by this team's own percentile across the games currently shown — not the season-long, opponent-adjusted Adj. Offense/Adj. Defense above, so don't expect them to match exactly. Each four-factor/shooting cell shows Team / Opponent for that single game, with whichever side is better in bold; unlike ORtg/DRtg, these aren't color-shaded, to keep the table from turning into 16 competing colors per row. Player Stats shows up to 12 players (the whole roster, if fewer than 12 have box-score data), sorted by MPG -- GP, MPG, PPG, RPG, OREB, APG, SPG, BPG, TOPG, FGM/FGA, 3FGM/3FGA, FTM/FTA, shooting splits, and the player value stats (OBPM/DBPM/BPM, VORP, wins above replacement, Game Score per 40, each split offense/defense/total) -- each shaded by percentile within the roster currently shown. Click a player to open her full player profile page. The Shooting by Zone tab shows the same players' makes and attempts (per game, or totals with Season Total), FG%, and share of her shots from each zone (Rim/Paint/Mid/Corner 3/Above-the-Break 3), from the same filtered games; it starts in rotation order, and any column header sorts it. FG% is shaded within this roster, so check At/G before reading much into a bright cell from a player with only a handful of attempts. Team Shooting/Defense by Zone reflect the same filters as everything else here (Games/Opponent-rank/etc.) -- zones (Rim/Paint/Mid-Range/Corner 3/Above-the-Break 3) are a distance/sideline heuristic from play-by-play shot locations, not an official ESPN zone definition; see the About note for how they're built and verified. A small number of games have no shot-location data available upstream and show as all zeros.</div>
+    <div class="footnote">Four factors, KPI cards, and Player Stats all reflect the filters above (default: full season), including Player(s): pick one or more and set them to "Played (in)" or "Did not play (out)" to see how the team's numbers shift with a player available vs. missing -- e.g. to gauge an injury's impact. "All selected" requires every picked player to match; "Any selected" needs just one. Overall rank, Adj. Offense, Adj. Defense, and Tempo come from the same opponent-adjusted ridge model as the Predictions tab (fitted in the build on every D1 game, home court fitted, neutral sites from the schedule; once the projected season is under way, results plus the preseason projection), and are not affected by any filter, player or otherwise — that model's output can't be meaningfully recomputed from a game subset. The identity blurb up top, and Luck / WAB / Havoc Rate / Assist Rate / Quad Record below, are all season-long for the same reason. WAB (Wins Above Bubble) and the Quad Record use OUR rank, not the NCAA committee's official NET or the committee's own review of the Quad cut lines each year -- treat both as a close approximation, not an official number. Luck is wins above what points-for/points-against (a standard Pythagorean formula, D1 games only) would predict -- a helpful regression flag, not a judgment; an "unlucky" team isn't a bad one. Team Profile ranks and the 3PT Rate / TOV% / eFG% KPI ranks ARE recomputed live among all D1 teams, but only under the Location/Games/Opponent-rank/Conference filters -- a roster is specific to this team, so the Player(s) filter narrows this team's own numbers without changing what it's being ranked against. Each Team Profile row is shaded by that same live percentile. In the Game Log, click a date for that game's full recap (box scores, game flow, what decided it, standout performances), or an opponent's name to jump to their own dashboard (when they're a tracked D1 team). ORtg/DRtg are per-game estimates (points per 100 possessions, from that game's own box score), shaded by this team's own percentile across the games currently shown — not the season-long, opponent-adjusted Adj. Offense/Adj. Defense above, so don't expect them to match exactly. Each four-factor/shooting cell shows Team / Opponent for that single game, with whichever side is better in bold; unlike ORtg/DRtg, these aren't color-shaded, to keep the table from turning into 16 competing colors per row. Player Stats shows up to 12 players (the whole roster, if fewer than 12 have box-score data), sorted by MPG -- GP, MPG, PPG, RPG, OREB, APG, SPG, BPG, TOPG, FGM/FGA, 3FGM/3FGA, FTM/FTA, shooting splits, and the player value stats (OBPM/DBPM/BPM, VORP, wins above replacement, Game Score per 40, each split offense/defense/total) -- each shaded by percentile within the roster currently shown. Click a player to open her full player profile page. The Shooting by Zone tab shows the same players' makes and attempts (per game, or totals with Season Total), FG%, and share of her shots from each zone (Rim/Paint/Mid/Corner 3/Above-the-Break 3), from the same filtered games; it starts in rotation order, and any column header sorts it. FG% is shaded within this roster, so check At/G before reading much into a bright cell from a player with only a handful of attempts. Team Shooting/Defense by Zone reflect the same filters as everything else here (Games/Opponent-rank/etc.) -- zones (Rim/Paint/Mid-Range/Corner 3/Above-the-Break 3) are a distance/sideline heuristic from play-by-play shot locations, not an official ESPN zone definition; see the About note for how they're built and verified. A small number of games have no shot-location data available upstream and show as all zeros.</div>
   </div>
 
   <!-- INDIVIDUAL PLAYER PROFILE PAGE -->
@@ -1825,6 +1828,18 @@
   const N_TEAMS = TEAMS.length;
   const byName = new Map(TEAMS.map(t => [t.team, t]));
   const byId = new Map(TEAMS.map(t => [t.id, t]));
+  // w1.13: preseason mode -- see the note above PRESEASON_COLUMNS
+  const PRE_RANK = (() => {
+    try {
+      const p = JSON.parse(document.getElementById('predict-data').textContent);
+      if (!p || !p.ok || !Array.isArray(p.teams)) return null;
+      const end = /\d{2}$/.test(String(p.season)) ? 2000 + +String(p.season).slice(-2) : null;
+      const cur = parseInt(RAW.season, 10);
+      if (!end || !isFinite(cur) || end <= cur) return null;
+      const lbl = y => (y - 1) + '–' + String(y).slice(-2);
+      return { pd: p, label: lbl(end), lastLabel: lbl(cur), mu: p.gm ? p.gm.mu : 0 };
+    } catch (e) { return null; }
+  })();
 
   // Short team name for the Rankings table (e.g. "UCLA Bruins" -> "UCLA")
   // -- there's no separate "school name" field in the data, only the full
@@ -2586,7 +2601,7 @@
     catch (e) { return null; }
   })();
   // w1.9: the build ships the ratings themselves (the same ridge model as the
-  // Projections tab -- see build_dashboards.R); the home edge and game spread
+  // Predictions tab -- see build_dashboards.R); the home edge and game spread
   // they were fitted with travel with them, so WAB and every matchup number use
   // one consistent scale.
   const SHIPPED_RATINGS = (() => {
@@ -2773,10 +2788,14 @@
     const stale = inSeason && lagDays != null && lagDays > 2;
     const warn = stale || miss.length > 0 || M.schedule === false;
     btn.classList.toggle('warn', warn);
-    btn.innerHTML = '<span class="ds-dot" aria-hidden="true"></span><span class="ds-long">Data through <b>' + fmt(through) + '</b></span><span class="ds-short">Thru <b>' + fmt(through, { month: 'short', day: 'numeric' }) + '</b></span>';
-    btn.title = 'Last game in this file' + (warn ? ' (see notes)' : '');
+    btn.innerHTML = '<span class="ds-dot" aria-hidden="true"></span>' + (PRE_RANK
+      ? '<span class="ds-long"><b>' + PRE_RANK.label + ' preseason</b> · ' + PRE_RANK.lastLabel + ' games thru ' + fmt(through) + '</span><span class="ds-short"><b>' + PRE_RANK.label + '</b> preseason</span>'
+      : '<span class="ds-long">Data through <b>' + fmt(through) + '</b></span><span class="ds-short">Thru <b>' + fmt(through, { month: 'short', day: 'numeric' }) + '</b></span>');
+    btn.title = PRE_RANK ? PRE_RANK.label + ' preseason; ' + PRE_RANK.lastLabel + ' is the last season with games' : 'Last game in this file' + (warn ? ' (see notes)' : '');
     const season = RAW.season ? (RAW.season - 1) + '–' + String(RAW.season).slice(2) : '';
-    let h = '<p>Games through <b>' + fmt(through, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + '</b>' + (season ? ' (' + season + ' season)' : '') + '.' +
+    let h = (PRE_RANK ? '<p><b>' + PRE_RANK.label + ' preseason.</b> Team Rankings and the Predictions tab show the ' + PRE_RANK.label +
+      ' season (preseason projection, updated ' + esc2(PRE_RANK.pd.built) + '). No ' + PRE_RANK.label + ' box scores are published yet, so team pages, the Player Leaderboard, Shot Zones and Conferences show ' +
+      PRE_RANK.lastLabel + ' until the first games are in.</p>' : '') + '<p>Games through <b>' + fmt(through, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + '</b>' + (season ? ' (' + season + ' season)' : '') + '.' +
       (builtStr ? ' Built ' + fmt(builtDay) + ' at ' + esc2(builtStr.slice(11)) + '.' : '') + '</p>';
     if (stale) h += '<p class="ds-warn">No new games in the last ' + lagDays + ' days of data. If games were played since, the upstream release may be late; rebuilding later in the day usually picks them up.</p>';
     h += '<p>' + (M.team_games || games).toLocaleString() + ' team-games from box scores' + (M.schedule === false ? '.' : ', ' + neutral.toLocaleString() + ' at neutral sites.') + '</p>';
@@ -3497,9 +3516,42 @@
   const fmtPct = (v) => v == null ? '—' : v + '%';
   const fmtSigned = (v) => v == null ? '—' : (v > 0 ? '+' + v : String(v));
 
+  // ---- w1.13: preseason mode -------------------------------------------------
+  // From October 1 until the new season's first box scores are published, this
+  // file's games are LAST season's (build_dashboards.R falls back to them) while
+  // #predict-data holds the new season. In that window Team Rankings shows the
+  // new season's preseason ratings from the prediction model instead of last
+  // season's final ones. Once the new season's games are here, the shipped
+  // ratings ARE the prediction model's (results + preseason prior), so the
+  // normal table below takes over and updates with every game.
+  const fmtRec = (a, b) => (a == null || b == null) ? '—' : Math.round(a) + '-' + Math.round(b);
+  const PRESEASON_COLUMNS = [
+    { key: 'rank', label: 'Rk', defaultDir: 'asc', colorScale: false, core: true, sortVal: t => t.pre.rank, display: t => t.pre.rank },
+    { key: 'team', label: 'Team', isTeam: true, align: 'left', defaultDir: 'asc', colorScale: false, core: true, sortVal: t => (t.team || '').toLowerCase(), display: t => t.team },
+    { key: 'netRtg', label: 'Net', defaultDir: 'desc', core: true, tip: 'Projected Adj. Offense minus Adj. Defense, points per 100 possessions vs an average D1 team',
+      sortVal: t => t.pre.em, display: t => fmtSigned(t.pre.em) },
+    { key: 'adjO', label: 'AdjO', defaultDir: 'desc', core: true, sortVal: t => t.pre.O, display: t => (PRE_RANK.mu + t.pre.O).toFixed(1) },
+    { key: 'adjD', label: 'AdjD', defaultDir: 'asc', core: true, sortVal: t => t.pre.D, display: t => (PRE_RANK.mu + t.pre.D).toFixed(1) },
+    { key: 'tempo', label: 'Tmp', defaultDir: 'desc', sortVal: t => t.pre.T, display: t => fmtNum(t.pre.T) },
+    { key: 'projRec', label: 'Proj Rec', defaultDir: 'desc', colorScale: false, core: true, tip: 'Average record over the simulated seasons (Predictions tab)',
+      sortVal: t => t.pre.w != null && t.pre.w + t.pre.l > 0 ? t.pre.w / (t.pre.w + t.pre.l) : null, display: t => fmtRec(t.pre.w, t.pre.l) },
+    { key: 'confRec', label: 'Conf', defaultDir: 'desc', colorScale: false, tip: 'Average conference record over the simulated seasons',
+      sortVal: t => t.pre.cw != null && t.pre.cw + t.pre.cl > 0 ? t.pre.cw / (t.pre.cw + t.pre.cl) : null, display: t => fmtRec(t.pre.cw, t.pre.cl) },
+    { key: 'ncaa', label: 'NCAA', defaultDir: 'desc', tip: 'Chance of making the NCAA tournament',
+      sortVal: t => t.pre.ncaa, display: t => t.pre.ncaa == null ? '—' : t.pre.ncaa > 0.995 ? '>99%' : t.pre.ncaa > 0 && t.pre.ncaa < 0.005 ? '<1%' : Math.round(t.pre.ncaa * 100) + '%' },
+    { key: 'ret', label: 'Ret Min', defaultDir: 'desc', tip: 'Share of last season’s minutes that return',
+      sortVal: t => t.pre.ret, display: t => fmtPct(t.pre.ret) },
+    { key: 'rank26', label: 'Last Rk', defaultDir: 'asc', colorScale: false, core: true, tip: 'Final rank last season',
+      sortVal: t => t.pre.rank26, display: t => t.pre.rank26 == null ? '—' : t.pre.rank26 },
+    { key: 'rankChg', label: '±', defaultDir: 'desc', tip: 'Places gained (▲) or lost (▼) since last season’s final rank',
+      sortVal: t => t.pre.rank26 == null ? null : t.pre.rank26 - t.pre.rank,
+      display: t => { if (t.pre.rank26 == null) return '—'; const d = t.pre.rank26 - t.pre.rank; return d > 0 ? '▲' + d : d < 0 ? '▼' + (-d) : '–'; } },
+  ];
+  if (PRE_RANK) PRESEASON_COLUMNS.forEach(c => { if (c.key === 'rank26') { c.label = PRE_RANK.lastLabel.slice(2) + ' Rk'; c.tip = 'Final rank in ' + PRE_RANK.lastLabel; } });
+
   // `core:true` columns stay visible on a phone by default; the rest
   // collapse behind the "Show all columns" toggle (see renderRankingsTable).
-  const RANKINGS_COLUMNS = [
+  const RANKINGS_COLUMNS_SEASON = [
     { key: 'rank', label: 'Rk', defaultDir: 'asc', colorScale: false, core: true, sortVal: t => t.ratings ? t.ratings.rank : null, display: t => t.ratings ? t.ratings.rank : '—' },
     { key: 'team', label: 'Team', isTeam: true, align: 'left', defaultDir: 'asc', colorScale: false, core: true, sortVal: t => (t.team || '').toLowerCase(), display: t => t.team },
     { key: 'netRtg', label: 'Net', defaultDir: 'desc', core: true, sortVal: t => adjVal(t, 'em'), display: t => fmtNum(adjVal(t, 'em')) },
@@ -3528,6 +3580,7 @@
     { key: 'radar', label: 'Radar', defaultDir: 'desc', sortVal: t => TEAM_ADV[t.id] ? TEAM_ADV[t.id].radar : null, display: t => fmtSigned(TEAM_ADV[t.id] && TEAM_ADV[t.id].radar) },
     { key: 'record', label: 'Rec', defaultDir: 'desc', colorScale: false, sortVal: t => statsFor(t).winPct, display: t => statsFor(t).record || '—' },
   ];
+  const RANKINGS_COLUMNS = PRE_RANK ? PRESEASON_COLUMNS : RANKINGS_COLUMNS_SEASON;
   const RANKINGS_COL_BY_KEY = Object.fromEntries(RANKINGS_COLUMNS.map(c => [c.key, c]));
 
   let rankSort = { key: 'rank', dir: 'asc' };
@@ -3625,7 +3678,96 @@
   });
   wireFilterDrawer('zoneFilterBarToggle', 'zoneFilterBar', 'zoneFilterReset');
 
+  // ---- w1.13: Team Rankings in preseason mode (see PRE_RANK) ------------------
+  // One row per team in the new season's teams file -- its 2026-27 conference,
+  // including teams new to D1 that have no games in this file yet (no dashboard
+  // to open for those). Games / Opponent-rank / Min. games filters need this
+  // season's games, so they're hidden until there are some.
+  let PRE_ROWS = null;
+  function preRows(){
+    if (PRE_ROWS) return PRE_ROWS;
+    PRE_ROWS = PRE_RANK.pd.teams.map(p => {
+      const base = byId.get(p.id);
+      return { id: p.id, team: p.name, conf: p.conf, primary: (base && base.primary) || p.color, secondary: base && base.secondary,
+               known: !!base, pre: p };
+    });
+    return PRE_ROWS;
+  }
+  function renderPreseasonRankings(){
+    const poolAll = preRows();
+    let rows = poolAll;
+    if (rankConfFilter.value) rows = rows.filter(t => t.conf === rankConfFilter.value);
+    if (rankTierFilter.value === 'P4') rows = rows.filter(t => P4_PATTERNS.some(re => re.test(String(t.conf || '').trim())));
+    if (rankTopNFilter.value !== 'ALL') rows = rows.filter(t => t.pre.rank <= +rankTopNFilter.value);
+    sfRank.setFields('all', RANKINGS_COLUMNS.filter(c => !c.isTeam && c.key !== 'projRec' && c.key !== 'confRec').map(c => ({ key: c.key, label: c.label, get: c.sortVal })), []);
+    rows = sfRank.apply(rows);
+    const shadePool = rankShadeAll ? poolAll : rows;
+    const colPct = {};
+    RANKINGS_COLUMNS.forEach(c => {
+      if (c.colorScale === false) return;
+      colPct[c.key] = buildPercentileMap(shadePool.map(t => [t.id, c.sortVal(t)]), c.defaultDir !== 'asc');
+    });
+    if (!RANKINGS_COL_BY_KEY[rankSort.key]) rankSort = { key: 'rank', dir: 'asc' };
+    const col = RANKINGS_COL_BY_KEY[rankSort.key], dir = rankSort.dir;
+    const sorted = rows.slice().sort((a, b) => {
+      const av = col.sortVal(a), bv = col.sortVal(b);
+      if (av == null && bv == null) return 0; if (av == null) return 1; if (bv == null) return -1;
+      if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      return dir === 'asc' ? av - bv : bv - av;
+    });
+    const head = document.getElementById('rankingsHead');
+    head.innerHTML = RANKINGS_COLUMNS.map(c => {
+      const active = c.key === rankSort.key;
+      const arrow = active ? '<span class="arrow">' + (dir === 'asc' ? '\u25B2' : '\u25BC') + '</span>' : '';
+      return '<th class="sortable' + (c.core ? '' : ' col-more') + '" data-key="' + c.key + '"' + (c.align === 'left' ? '' : ' style="text-align:right"') +
+        (c.tip ? ' title="' + c.tip + '"' : c.key === 'rank' ? ' title="' + PRE_RANK.label + ' preseason rank"' : '') + (active ? ' data-sorted="1"' : '') + '>' + c.label + arrow + '</th>';
+    }).join('');
+    head.querySelectorAll('th.sortable').forEach(th => th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      rankSort = rankSort.key === key ? { key, dir: rankSort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: RANKINGS_COL_BY_KEY[key].defaultDir };
+      renderRankingsTable();
+    }));
+    const body = document.getElementById('rankingsBody');
+    body.innerHTML = sorted.map(t => '<tr>' + RANKINGS_COLUMNS.map(c => {
+      if (c.isTeam) {
+        const inner = teamLogoHTML(t, 'rank-logo') + '<span class="rowlink-name">' + shortTeamName(t.team) + '</span>';
+        return '<td>' + (t.known ? '<button class="rowlink" data-team="' + encodeURIComponent(byId.get(t.id).team) + '">' + inner + '<span class="chev">&rsaquo;</span></button>'
+          : '<span class="rowlink" title="New to D1: no ' + PRE_RANK.lastLabel + ' games to show">' + inner + '</span>') + '</td>';
+      }
+      const cls = [c.align === 'left' ? '' : 'num num-cell', c.core ? '' : 'col-more'].filter(Boolean).join(' ');
+      const bg = colPct[c.key] ? colorForPercentile(colPct[c.key].get(t.id)) : '';
+      return '<td' + (cls ? ' class="' + cls + '"' : '') + (bg ? ' style="' + bg + '"' : '') + '>' + c.display(t) + '</td>';
+    }).join('') + '</tr>').join('') || '<tr><td colspan="' + RANKINGS_COLUMNS.length + '" class="empty-note">No teams match this filter.</td></tr>';
+    setupRankingsViewToggle(RANKINGS_COLUMNS.length, RANKINGS_COLUMNS.filter(c => c.core).length);
+    body.querySelectorAll('button.rowlink').forEach(btn => btn.addEventListener('click', () => selectTeam(decodeURIComponent(btn.getAttribute('data-team')))));
+    const tierActive = rankTierFilter.value === 'P4', topNActive = rankTopNFilter.value !== 'ALL';
+    rankFilterReset.classList.toggle('active', !!(rankConfFilter.value || tierActive || topNActive || sfRank.activeFor('all')));
+    document.getElementById('rankingsNote').textContent = sorted.length + (sorted.length === 1 ? ' team' : ' teams') +
+      (rankConfFilter.value ? ' · ' + rankConfFilter.value : ' · all conferences') + (tierActive ? ' · Power 4' : '') +
+      (topNActive ? ' · Top ' + rankTopNFilter.value : '') + ' · ' + PRE_RANK.label + ' preseason' + (rankShadeAll ? ' · shaded vs. all D1' : '') +
+      ' · ranked by ' + col.label + ' (' + (dir === 'asc' ? 'asc' : 'desc') + ')';
+  }
+  if (PRE_RANK) {
+    // 2026-27 conferences in the Conference filter; window filters off until games exist
+    rankConfFilter.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+    Array.from(new Set(PRE_RANK.pd.teams.map(t => t.conf).filter(Boolean))).sort().forEach(c => {
+      const opt = document.createElement('option'); opt.value = c; opt.textContent = c; rankConfFilter.appendChild(opt);
+    });
+    const scn = document.getElementById('statCornerNote'); if (scn) scn.textContent = PRE_RANK.lastLabel + ' final numbers';
+    [rankGamesFilter, rankOppRankFilter, rankMinGamesFilter].forEach(el => { const g = el.closest('.filter-group'); if (g) g.style.display = 'none'; });
+    const intro = document.getElementById('rankPreNote');
+    if (intro) {
+      const rs = PRE_RANK.pd.report && PRE_RANK.pd.report.checks && PRE_RANK.pd.report.checks.roster_source;
+      intro.innerHTML = '<b>' + PRE_RANK.label + ' preseason rankings.</b> Projected ratings from the prediction model: each team’s ' + PRE_RANK.label +
+        ' roster (returning players, transfers, freshmen and recruits)' + (rs ? ' — ' + (rs.espn ? rs.espn + ' teams from ESPN’s ' + PRE_RANK.label + ' rosters, ' + rs.prep + ' from the prep sheet' : 'rosters from the prep sheet') : '') +
+        '. Once games start, results replace the preseason projection gradually and these ranks update with every game. Team pages still show ' + PRE_RANK.lastLabel +
+        ' until the first ' + PRE_RANK.label + ' box scores are published. Updated ' + PRE_RANK.pd.built + '.';
+      intro.style.display = '';
+    }
+  }
+
   function renderRankingsTable(){
+    if (PRE_RANK) return renderPreseasonRankings();
     const poolAll = TEAMS.filter(t => t.ratings);
     let rows = poolAll;
     if (rankConfFilter.value) rows = rows.filter(t => t.conf === rankConfFilter.value);
@@ -3699,7 +3841,7 @@
       const active = c.key === rankSort.key;
       const arrow = active ? '<span class="arrow">' + (dir === 'asc' ? '\u25B2' : '\u25BC') + '</span>' : '';
       const style = c.align === 'left' ? '' : ' style="text-align:right"';
-      const title = c.key === 'rank' ? ' title="Position in the current sorted, filtered list"'
+      const title = c.tip ? ' title="' + c.tip + '"' : c.key === 'rank' ? ' title="Position in the current sorted, filtered list"'
         : (c.key === 'netRtg' ? ' title="Adj. Offense minus Adj. Defense, opponent-adjusted. Season-long by default; with a Games or Opponent-rank filter on, the average of each game in the window adjusted for that opponent\u2019s season rating and the venue"' : '');
       const cls = 'sortable' + (c.core ? '' : ' col-more');
       const sortedAttr = active ? ' data-sorted="1"' : '';
@@ -4832,7 +4974,7 @@
             cols.map(([k]) => { const v = k === 'v' ? val(r) : r[k]; return '<td class="r num" style="' + colorForPercentile(pm[k].get(i)) + '">' + (v == null ? '—' : k === 'v' ? sg1(v) : f1(v)) + '</td>'; }).join('') + '</tr>'; }).join('') ||
           '<tr><td colspan="9" class="empty-note">No projected roster for this team.</td></tr>') + '</tbody></table></div>';
       const htOf = list => { let s = 0, w = 0; list.forEach(r => { const x = parseHt(r[4]); if (x && r[9]) { s += x * r[9]; w += r[9]; } }); return w ? s / w : null; };
-      ph = '<p class="rc-hnote">Projected rotation for ' + rcEsc(PD_SEASON_LABEL) + ' (top 8 by projected minutes), from the Projections tab. Value is projected points per 100 possessions above an average D1 player (offense + defense). Shading compares all 16 players. Rotation height (projected-minutes-weighted): ' +
+      ph = '<p class="rc-hnote">Projected rotation for ' + rcEsc(PD_SEASON_LABEL) + ' (top 8 by projected minutes), from the Predictions tab. Value is projected points per 100 possessions above an average D1 player (offense + defense). Shading compares all 16 players. Rotation height (projected-minutes-weighted): ' +
         rcEsc(A.short) + ' ' + fmtHt(htOf(rows[0])) + ', ' + rcEsc(B.short) + ' ' + fmtHt(htOf(rows[1])) + '.</p>' + tbl(rows[0], A) + tbl(rows[1], B);
     } else ph = '<p class="rc-note">No roster data for these teams.</p>';
     h += sec('muPlayers', 'Players to watch') + ph + '</section>';
@@ -5169,7 +5311,16 @@
 
     const r = t.ratings;
     const rankPill = document.getElementById('rankPill');
-    if (r){
+    // w1.13 preseason: the pill is the new season's preseason rank; the stats below are last season's
+    const pre = PRE_RANK ? PRE_RANK.pd.teams.find(p => p.id === t.id) : null;
+    document.getElementById('rankPillLbl').textContent = pre ? PRE_RANK.label + ' preseason rank' : 'national Torvik-style rank';
+    if (pre){
+      rankPill.style.display = 'inline-flex';
+      document.getElementById('rankPillNum').textContent = pre.rank;
+      document.getElementById('rankPillNum').style.color = badgeTextColor(hex);
+      document.getElementById('dashSub').textContent = PRE_RANK.label + ' preseason: No. ' + pre.rank + ', projected ' + Math.round(pre.w) + '-' + Math.round(pre.l) +
+        '. Stats below are ' + PRE_RANK.lastLabel + (r ? ' (No. ' + r.rank + ' nationally, ' + t.record + ').' : ' (' + t.record + ').');
+    } else if (r){
       rankPill.style.display = 'inline-flex';
       document.getElementById('rankPillNum').textContent = r.rank;
       document.getElementById('rankPillNum').style.color = badgeTextColor(hex);
@@ -5940,6 +6091,14 @@
   // ---- view tabs (Team Rankings / Player Leaderboard / Shot Zones / Conferences) -------
   let playersRendered = false, confsRendered = false, zonesRendered = false;
   function switchView(view){
+    // w1.13: preseason -- these tabs still hold last season's games
+    const sn = document.getElementById('seasonNotice');
+    if (sn) {
+      const old = PRE_RANK && (view === 'players' || view === 'zones' || view === 'confs');
+      sn.style.display = old ? '' : 'none';
+      if (old) sn.innerHTML = '<b>' + PRE_RANK.lastLabel + ' final numbers.</b> ' + PRE_RANK.label + ' stats start with the first box scores; ' +
+        (view === 'confs' ? 'conferences here are ' + PRE_RANK.lastLabel + ' memberships (see Predictions for ' + PRE_RANK.label + ' standings).' : 'see Team Rankings and Predictions for ' + PRE_RANK.label + '.');
+    }
     document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === view));
     document.getElementById('viewTeams').style.display = view === 'teams' ? '' : 'none';
     document.getElementById('viewPlayers').style.display = view === 'players' ? '' : 'none';
@@ -6260,7 +6419,7 @@
   renderStatCorner();
 
   // =====================================================================
-  // 2026-27 PROJECTIONS tab -- reads #predict-data, built by predict_wbb.R
+  // PREDICTIONS tab (w1.13 rename of "2026-27 Projections") -- reads #predict-data, built by predict_wbb.R
   // (roster-based preseason model, 2017-2026 backtest, season simulation).
   // =====================================================================
   (function projectionsTab(){
@@ -6287,7 +6446,7 @@
     if (!PD || !PD.ok) {
       const st = document.getElementById('pwStatus');
       st.className = 'pw-status err';
-      st.innerHTML = 'Projections aren’t available in this build' + (PD && PD.error ? ': ' + esc(PD.error) : '.') +
+      st.innerHTML = 'Predictions aren’t available in this build' + (PD && PD.error ? ': ' + esc(PD.error) : '.') +
         ' The rest of the dashboard is unaffected. Rerun <b>build_dashboards.R</b> and look for the line starting “WARNING: prediction module failed”.';
       return;
     }
@@ -6313,11 +6472,19 @@
     function normCdf(z){ const t = 1 / (1 + 0.2316419 * Math.abs(z)); const d = 0.3989423 * Math.exp(-z * z / 2);
       const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; }
 
+    // w1.13: where the 2026-27 rosters came from
+    function rosterSrcText(){
+      const rs = PD.report && PD.report.checks && PD.report.checks.roster_source;
+      if (!rs) return 'prep sheet';
+      if (!rs.espn) return 'prep sheet' + (rs.file ? '; ESPN’s 2026-27 roster file is still last season’s' : '');
+      if (!rs.prep) return 'ESPN 2026-27 rosters for every team';
+      return 'ESPN 2026-27 rosters for ' + rs.espn + ' teams, the prep sheet for ' + rs.prep;
+    }
     // ---------- status ----------
     function status(){
       const sc = PD.confs.reduce((a, c) => { a[c.status] = (a[c.status] || 0) + 1; return a; }, {});
       const mode = PD.mode === 'preseason'
-        ? '<b>Preseason projection</b>, built from the 2026-27 rosters in the prep sheet (returning players, transfers, graduations, top-100 recruits and FIBA youth tournaments).'
+        ? '<b>Preseason predictions</b>, built from each team’s 2026-27 roster: returning players, transfers, graduations, top-100 recruits and FIBA youth tournaments. Rosters: ' + rosterSrcText() + '.'
         : '<b>In-season projection</b>: ' + PD.games_played.toLocaleString() + ' games played so far have replaced part of the preseason projection.';
       document.getElementById('pwStatus').innerHTML = mode + ' Records, standings and tournament odds come from ' + PD.n_sims.toLocaleString() +
         ' simulated seasons. Conference schedules: ' + (sc.official || 0) + ' official, ' + (sc.partial || 0) + ' partly posted, ' + (sc.projected || 0) +
@@ -6767,7 +6934,7 @@
         '<p><b>Newcomers.</b> On ' + (R.newc.n_classes > 1 ? R.newc.n_classes + ' recruiting classes’ first college seasons' : 'the 2025 recruiting class’s real 2025-26 seasons') + ' (' + R.newc.n_rank + ' players), a No. 1 recruit was worth about ' + sgn(R.newc.rank1) + ' and a No. 50 about ' + sgn(R.newc.rank50) + ' per 100 possessions more than a typical newcomer at the same program, and played about ' + R.newc.min1 + ' and ' + R.newc.min50 + ' minutes a game at an average D1 program — fewer at stronger ones (' + Math.abs(R.newc.min_prog) + ' fewer per point of the program’s rating), because deep rosters give freshmen less room. FIBA youth production (EFF per 40 minutes) was fitted on the ' + R.newc.n_fiba + ' players from summer 2025 events who reached D1; with a sample that small its effect is halved. FIBA numbers are first put on a common scale, because the same player posts very different efficiency at different levels. Measured from ' + (R.newc.fiba_multi || 0) + ' players who played in more than one event, a player’s EFF per 40 minutes changes as follows versus U18 Division A: ' + (R.newc.fiba_levels || []).filter(l => l[2] !== 'baseline').map(l => esc(l[0]) + ' ' + (l[1] > 0 ? '+' : '') + l[1] + (l[2] === 'assumed' ? ' (assumed)' : '')).join(', ') + '. Positive means the level is easier, so the numbers are marked down. Levels marked assumed share no players with the Eurobasket events or aren’t in the sheet.' + (R.newc.fiba_r2 ? ' On the 2025 players who reached D1, level-adjusted numbers explained ' + Math.round(R.newc.fiba_r2.level_adjusted * 100) + '% of first-season value vs ' + Math.round(R.newc.fiba_r2.raw * 100) + '% unadjusted.' : '') + ' Everyone else starts from what newcomers at similar programs have done. Last year’s top-100 recruits who have barely played (injury, redshirt) keep that recruit-rank bump, faded by how many college minutes they’ve logged: a player who hasn’t played gets all of it, and it’s mostly gone after about 450 minutes. How pedigree holds up after a lost season can’t be tested yet, because the prep sheet has only two recruiting classes, so that fade is an assumption rather than a fitted result.</p>' +
         '<p><b>Team projection.</b> Projected minutes times projected values, blended with the program’s last two seasons (coaching, system and development that the roster doesn’t capture) and with where the team’s transfers came from — rosters rebuilt from high-major transfers have outperformed ones rebuilt from mid-majors with similar box-score values — fitted on ' + R.team_seasons.toLocaleString() + ' team seasons. Each team’s uncertainty grows with the share of minutes going to newcomers (unlisted roster spots count double)' + (R.with_coach ? ', and a new head coach enters the projection itself, fitted from coaching history' : ', plus 10% for a new head coach') + '. Tempo comes from last season’s pace, how much of the roster returns, and the pace of the teams the transfers came from' + (bt[0].rmse_tempo != null ? ' (tempo error ' + avg('rmse_tempo').toFixed(2) + ' possessions vs ' + avg('rmse_tempo_carry').toFixed(2) + ' for last season’s pace alone)' : '') + '.</p>' +
         '<p><b>Season simulation.</b> ' + PD.n_sims.toLocaleString() + ' runs. Each run redraws every team’s true strength from its uncertainty, plays every game (home court ' + PD.gm.h + ' points per 100 possessions each way; single-game spread σ ' + PD.gm.sigma + ' points, measured on games held out of the ratings' + (R.conf_sd ? '; ±' + R.conf_sd + ' of each team’s uncertainty is shared by its whole conference, so a league can be over- or underrated together' : '') + '), then conference standings, conference tournaments and a 68-team NCAA field: automatic bids to tournament champions, at-large bids and the S-curve by an efficiency-based résumé (strength plus how well the team played that run), top-16 seeds hosting the first two rounds. The committee’s real process weighs more than this, so treat seeds as approximate.</p>' +
-        '<h4>Data checks</h4><p>' + (ck.snapshot && ck.snapshot.mode === 'frozen' ? '<b>Preseason roster</b> (prep sheet, as saved in the snapshot): ' : '') + ck.roster_players.toLocaleString() + ' players on 2026-27 rosters; ' + ck.recruits_found + ' of ' + ck.recruits_total + ' top-100 recruits matched to a roster by name; ' + ck.fiba_found + ' newcomers matched to FIBA youth stats; ' + ck.nond1 + ' transfers from below D1.' +
+        '<h4>Data checks</h4><p>' + (ck.snapshot && ck.snapshot.mode === 'frozen' ? '<b>Preseason roster</b> (as saved in the snapshot): ' : '') + ck.roster_players.toLocaleString() + ' players on 2026-27 rosters; ' + ck.recruits_found + ' of ' + ck.recruits_total + ' top-100 recruits matched to a roster by name; ' + ck.fiba_found + ' newcomers matched to FIBA youth stats; ' + ck.nond1 + ' transfers from below D1.' +
         (ck.padded_teams.length ? ' ' + ck.padded_teams.length + ' teams list fewer than 10 players in the prep sheet and were filled with unlisted roster spots, placed last in the rotation. One or two are valued at replacement level; teams missing 3 or more keep typical-newcomer values and are marked low confidence: ' + ck.padded_teams.map(esc).join(', ') + '.' : '') +
         (ck.duplicates.length ? ' ' + ck.duplicates.length + ' Freshmen-tab entries were the same player as someone already in the stats tab under a nickname or another spelling, and were merged: ' + ck.duplicates.map(esc).join(', ') + '.' : '') +
         (ck.prior_added.length ? ' 2025 top-100 recruits who didn’t play in 2025-26 and aren’t in the prep sheet were restored to their school (remove any who have left): ' + ck.prior_added.map(esc).join(', ') + '.' : '') +
@@ -6796,8 +6963,13 @@
             '<p>Key players (usual 20+ minutes) whose minutes fell off a cliff in their team\u2019s latest game, not explained by foul trouble or by the whole rotation sitting. <b>Reported only</b> \u2014 none of this changes a rating or win chance; to apply one, add a row to wbb_injuries.csv (the list is also saved as wbb_2027_minutes_flags.csv). Historically, the next game is missed by ' + Math.round((pm.DNP || 0) * 100) + '% of players who didn\u2019t play, ' + Math.round((pm.severe || 0) * 100) + '% of those who played under 30% of their usual minutes, and ' + Math.round((pm.sharp || 0) * 100) + '% of those under half (' + (M.base * 100).toFixed(1) + '% for key players with normal minutes). ' +
             (a(M.rows).length ? '<b>' + a(M.rows).length + ' now:</b> ' + a(M.rows).slice(0, 40).map(esc).join('; ') + (a(M.rows).length > 40 ? ' \u2026 and ' + (a(M.rows).length - 40) + ' more' : '') + '.' : 'None right now.') + '</p>'; })() : '') +
         (ck.snapshot ? '<p class="pw-note">' + (ck.snapshot.mode === 'frozen' ? 'Season under way: preseason projections come from the snapshot saved ' + esc(ck.snapshot.built) + '; the prep sheet isn’t read.' :
-          ck.snapshot.mode === 'preseason' ? 'Preseason: projections come from the prep sheet and were saved as the preseason snapshot (' + esc(ck.snapshot.built) + '). The last save before the first game is the one the season uses.' :
+          ck.snapshot.mode === 'preseason' ? 'Preseason: predictions come from the current rosters (' + rosterSrcText() + ') and were saved as the preseason snapshot (' + esc(ck.snapshot.built) + '). The last save before the first game is the one the season uses.' :
           'The season has started but the snapshot was rebuilt from the prep sheet (' + esc(ck.snapshot.mode) + ', ' + esc(ck.snapshot.built) + ').') + '</p>' : '') +
+        // w1.13: roster source, team by team
+        (ck.roster_source ? '<p><b>Roster source.</b> ' + (!ck.roster_source.file ? 'ESPN hasn’t published a 2026-27 roster file yet, so every team’s roster comes from the prep sheet.'
+          : ck.roster_source.espn === 0 ? 'ESPN’s 2026-27 roster file is still last season’s rosters (' + ck.roster_source.stale + ' of ' + ck.roster_source.listed + ' listed teams unchanged), so every team’s roster comes from the prep sheet. Each team switches to its ESPN listing automatically once at least ' + Math.round(ck.roster_source.threshold * 100) + '% of the players are new to the team and ' + Math.round(ck.roster_source.threshold * 100) + '% of last season’s are gone.'
+          : ck.roster_source.espn + ' teams use ESPN’s 2026-27 roster; ' + ck.roster_source.prep + ' still use the prep sheet' + (ck.roster_source.prep_teams.length && ck.roster_source.prep_teams.length <= 40 ? ' (' + ck.roster_source.prep_teams.map(esc).join(', ') + ')' : '') + '. A team switches once at least ' + Math.round(ck.roster_source.threshold * 100) + '% of its listed players are new to it and ' + Math.round(ck.roster_source.threshold * 100) + '% of last season’s are gone.') +
+          (ck.roster_source.mode !== 'auto' ? ' (WBB_ROSTER_MODE=' + esc(ck.roster_source.mode) + ')' : '') + '</p>' : '') +
         (ck.new_coaches != null && ck.new_coaches < 20 ? '<p><b>Check the coaching data.</b> Only ' + ck.new_coaches + ' teams are marked with a new head coach in wbb_2027_teams.csv; a typical D1 offseason has far more. Update the new_coach column.</p>' : '') +
         (R.tune ? '<h4>Tuning check</h4><p>The defensive box-score weight and the position adjustment were re-chosen season by season using only earlier seasons. That nested procedure scores ' + R.tune.nested_rmse.toFixed(3) + ', vs ' + R.tune.best_single_rmse.toFixed(3) + ' for the best single setting chosen with hindsight — the difference is how much tuning on the backtest flatters it.</p>' : '') +
         '<p class="pw-note">Model ' + esc(PD.version) + ' · build took ' + R.seconds + ' s.</p>';
@@ -6834,7 +7006,7 @@
       renderMovers();
       setTab('nat');
     }
-    if (location.hash === '#projections') switchView('predict');
+    if (location.hash === '#projections' || location.hash === '#predictions') switchView('predict');
   })();
 
 })();

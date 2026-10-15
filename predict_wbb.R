@@ -33,7 +33,7 @@
 #      preseason projection as its prior, calibrated on past seasons).
 # =============================================================================
 
-PW_VERSION        <- "w1.12"
+PW_VERSION        <- "w1.13"
 PW_CAL_VERSION    <- "w1.11"                    # calibration-cache compatibility: bump ONLY when calibration code changes (w1.10: held-out validation)
 PRED_SEASON       <- 2027                       # season label = year it ends
 HIST_SEASONS      <- 2017:(PRED_SEASON - 1)     # full-coverage seasons in the releases (2014-16 are partial)
@@ -61,6 +61,16 @@ PW_XWALK_FILE      <- "wbb_player_xwalk.csv"     # optional, hand-kept: pid, esp
 PW_ROSTER_MODE     <- tolower(Sys.getenv("WBB_ROSTER_MODE", "auto"))  # auto | prep | live
 PW_ROSTER_FRESH    <- 0.90                       # ESPN listing trusted once it holds this share of a team's box-score players
 PW_ROSTER_SIZE     <- c(9, 24)                   # ...and lists a plausible number of players
+# ---- w1.13: preseason roster source (ESPN 2026-27 listing vs the prep sheet) ------
+# ESPN's rosters_<season> release is first published as a copy of the season just
+# finished (Oct 2026: 4,908 of 4,929 D1 rows unchanged, no freshmen, 1 of 1,086
+# transfers moved). A team's ESPN listing replaces its prep-sheet roster once it has
+# really turned over: at least PW_ESPN_TURNOVER of the listed players are new to that
+# team AND at least PW_ESPN_TURNOVER of last season's listing is gone, with a
+# plausible size (PW_ROSTER_SIZE). On the prep sheet's 2026-27 rosters 346 of 362
+# teams clear this; on the stale copy, 0 of 357. WBB_ROSTER_MODE=prep keeps the
+# prep sheet for everyone, =live uses every ESPN listing of plausible size.
+PW_ESPN_TURNOVER   <- 0.15
 PW_INJURY_FILE     <- "wbb_injuries.csv"
 PW_INJ_SLIP_DAYS   <- 7                          # returns slip: chance of playing is centred this many days after expected_return
 PW_INJ_SLIP_SCALE  <- 3.5                        # logistic scale (days) of that ramp, roughly a two-week rise
@@ -774,8 +784,9 @@ pw_fiba_bump <- function(cal, eff40) {
 }
 
 # ---- 2026-27 roster from the prep sheet --------------------------------------
-pw_build_roster <- function(prep, teams, H) {
+pw_build_roster <- function(prep, teams, H, espn = NULL) {
   T0 <- max(as.integer(names(H)))
+  espn_teams <- if (is.null(espn) || !nrow(espn)) character(0) else unique(espn$team_id)
   st <- prep$stats
   tid <- setNames(teams$espn_id, teams$team)
   st$athlete_id <- pw_id(st$athlete_id)
@@ -822,6 +833,32 @@ pw_build_roster <- function(prep, teams, H) {
     ro2$pid <- ro2$athlete_id
     ro <- rbind(ro, ro2[, names(ro)])
   }
+  # w1.13: teams whose ESPN 2026-27 listing has really turned over (pw_espn_preseason)
+  # take that listing as their roster; the prep sheet still supplies last season's
+  # line, the previous school of newcomers, recruit ranks and FIBA numbers
+  ro$espn <- FALSE
+  if (length(espn_teams)) {
+    ro <- ro[!ro$team_id %in% espn_teams, ]
+    tname <- setNames(teams$team, teams$espn_id)
+    si <- match(espn$athlete_id, st$athlete_id)
+    hist_team <- rep(NA_character_, nrow(espn))
+    for (y in rev(names(H))) {                         # most recent D1 team in the box scores
+      pv <- H[[y]]$pv; k <- is.na(hist_team); hist_team[k] <- pv$team_id[match(espn$athlete_id[k], pv$athlete_id)]
+    }
+    in_hist <- !is.na(hist_team)
+    fr_all <- prep$fresh[!is.na(prep$fresh$Name) & !is.na(prep$fresh$Team), ]
+    fi <- match(paste(pw_norm_name(espn$name), espn$team_id), paste(pw_norm_name(fr_all$Name), unname(tid[fr_all$Team])))
+    prev <- ifelse(!is.na(si), as.character(st$`2026 Team`[si]),
+            ifelse(in_hist, unname(tname[hist_team]), as.character(fr_all$`Previous School/Team`[fi])))
+    e <- data.frame(athlete_id = espn$athlete_id, team_id = espn$team_id, team = unname(tname[espn$team_id]), name = espn$name,
+                    prev_team = prev, exp_years = espn$exp_years, height = espn$height, cls = espn$cls, pos = espn$pos,
+                    source = ifelse(!is.na(si) | in_hist, "stats", "newcomer"),
+                    ly_gp = pw_num(st$games_played[si]), ly_mpg = pw_num(st$mpg[si]), ly_ppg = pw_num(st$ppg[si]),
+                    ly_rpg = pw_num(st$rpg[si]), ly_apg = pw_num(st$apg[si]), ly_min = pw_num(st$total_minutes[si]),
+                    ly_pts = pw_num(st$total_pts[si]), stringsAsFactors = FALSE)
+    e$pid <- e$athlete_id; e$espn <- TRUE
+    ro <- rbind(ro, e[, names(ro)])
+  }
   # Identity: link every player to her box-score history. IDs first; when the
   # sheet's ID is missing or doesn't match, fall back to name + school (either
   # last season's school or the 2026-27 one), then to a name that's unique in
@@ -831,7 +868,7 @@ pw_build_roster <- function(prep, teams, H) {
   allpv$key <- pw_norm_name(allpv$name)
   allpv <- allpv[!duplicated(paste(allpv$athlete_id, allpv$team_id)), ]
   tid_all <- setNames(teams$espn_id, teams$team)
-  ro$matched <- "id"
+  ro$matched <- ifelse(ro$espn, "espn", "id")
   # w1.9: hand-kept links first (wbb_player_xwalk.csv), so a known nickname or a
   # wrong sheet id is fixed once and stays fixed
   xw <- pw_read_xwalk()
@@ -841,7 +878,8 @@ pw_build_roster <- function(prep, teams, H) {
     ro$source[hx & ro$source == "newcomer" & ro$athlete_id %in% allpv$athlete_id] <- "history"
   }
   ro$aliases <- xw$aliases[kx]
-  for (k in which(!ro$athlete_id %in% allpv$athlete_id & ro$matched != "xwalk")) {
+  # (ESPN-listed rows carry ESPN's own athlete id, so they skip the name matching)
+  for (k in which(!ro$athlete_id %in% allpv$athlete_id & !ro$matched %in% c("xwalk", "espn"))) {
     cand <- allpv[allpv$key == pw_norm_name(ro$name[k]), ]
     ro$matched[k] <- "none"
     if (!nrow(cand)) next
@@ -856,7 +894,8 @@ pw_build_roster <- function(prep, teams, H) {
       if (ro$source[k] == "newcomer") ro$source[k] <- "history"
     }
   }
-  ro <- ro[order(ro$source != "stats"), ]; ro <- ro[!duplicated(ro$athlete_id), ]
+  # a player on a team's ESPN listing is there, whatever the sheet says elsewhere
+  ro <- ro[order(!ro$espn, ro$source != "stats"), ]; ro <- ro[!duplicated(ro$athlete_id), ]
   # thin or missing rosters (the sheet lists fewer than PW_MIN_ROSTER players):
   # pad with unlisted roster spots valued as an unranked newcomer, so the
   # program still gets a projection instead of a 5-player team playing 40 a night
@@ -878,8 +917,9 @@ pw_build_roster <- function(prep, teams, H) {
   }
   ro$key <- pw_norm_name(ro$name)
   ro$rec_key <- ifelse(ro$source == "newcomer", ro$key, NA)
-  ro <- pw_attach_recruits(ro, prep, teams, H)
-  ro <- pw_attach_prior_class(ro, prep, teams, H)
+  ro <- pw_attach_recruits(ro, prep, teams, H, espn_teams)
+  ro <- pw_attach_prior_class(ro, prep, teams, H, espn_teams)
+  ro$espn[is.na(ro$espn)] <- FALSE
   attr(ro, "dropped_dups") <- dropped_dups
   ro
 }
@@ -905,7 +945,7 @@ pw_read_overrides <- function() {
   o$key <- ifelse(is.na(o$athlete_id), pw_norm_name(o$name), NA_character_)
   o
 }
-pw_attach_prior_class <- function(ro, prep, teams, H) {
+pw_attach_prior_class <- function(ro, prep, teams, H, espn_teams = character(0)) {
   T <- max(as.integer(names(H))) + 1
   rc <- prep$rec[prep$rec$year == T - 2, ]
   ro$rank_prev <- NA_real_; ro$prior_added <- FALSE; ro$prior_note <- NA_character_
@@ -939,7 +979,8 @@ pw_attach_prior_class <- function(ro, prep, teams, H) {
     if (length(hit) == 1) { ro$rank_prev[hit] <- rc$rank[k]; next }
     if (length(hit) > 1 || is.na(tm)) next
     # 4. no college minutes anywhere and on no roster: restore to her school
-    if (key %in% pw_norm_name(hist$name)) next
+    #    (not to a team whose ESPN listing is the roster -- it would list her)
+    if (key %in% pw_norm_name(hist$name) || dest %in% espn_teams) next
     add <- ro[1, ]; add[] <- NA
     add$athlete_id <- pw_stable_id("rp", rc$name[k], dest); add$pid <- add$athlete_id; add$team_id <- dest; add$team <- teams$team[teams$espn_id == dest]
     add$name <- rc$name[k]; add$source <- "newcomer"; add$exp_years <- 0; add$cls <- "R-Fr."; add$pos <- rc$pos[k]
@@ -979,7 +1020,7 @@ pw_college_map <- function(prep, teams, H) {
     if (length(hit) == 1) teams$espn_id[hit] else NA_character_
   }
 }
-pw_attach_recruits <- function(ro, prep, teams, H) {
+pw_attach_recruits <- function(ro, prep, teams, H, espn_teams = character(0)) {
   T <- max(as.integer(names(H))) + 1
   rc <- prep$rec[prep$rec$year == T - 1, ]
   if (!nrow(rc)) return(ro)
@@ -994,6 +1035,7 @@ pw_attach_recruits <- function(ro, prep, teams, H) {
     cand <- which(ro$team_id == tm & ro$source == "newcomer" & last(ro$name) == last(rc$name[k]))
     if (length(cand) == 1) { ro$rec_key[cand] <- key; next }
     if (key %in% ro$key[ro$team_id == tm]) next                # already there with college stats
+    if (tm %in% espn_teams) next                               # w1.13: ESPN lists that roster; not on it = not added
     add <- ro[1, ]; add[] <- NA
     add$athlete_id <- pw_stable_id("rec", rc$name[k], tm); add$pid <- add$athlete_id; add$team_id <- tm; add$team <- teams$team[teams$espn_id == tm]
     add$name <- rc$name[k]; add$source <- "newcomer"; add$exp_years <- 0; add$cls <- "Fr."; add$pos <- rc$pos[k]
@@ -1050,9 +1092,9 @@ pw_add_nond1 <- function(H, ro, prep, vm) {
 PW_NOND1_Q <- c("D2" = 0.05, "NAIA" = 0.03, "JUCO" = 0.03, "D2/NAIA" = 0.05)   # assumed D1 percentile per level
 
 # ---- full 2026-27 projection --------------------------------------------------
-pw_project_2027 <- function(H, cal, prep, teams, vm) {
+pw_project_2027 <- function(H, cal, prep, teams, vm, espn = NULL) {
   T <- max(as.integer(names(H))) + 1
-  ro <- pw_build_roster(prep, teams, H); dups <- attr(ro, "dropped_dups")
+  ro <- pw_build_roster(prep, teams, H, espn); dups <- attr(ro, "dropped_dups")
   nd <- pw_add_nond1(H, ro, prep, vm); Hx <- nd$H
   f <- pw_player_features(ro[, c("athlete_id", "team_id")], T, Hx)
   f <- cbind(f, ro[, setdiff(names(ro), names(f))])
@@ -2206,6 +2248,52 @@ pw_espn_roster <- function(yr) {
   nm <- if (!is.null(r$display_name)) r$display_name else r$full_name
   data.frame(athlete_id = pw_id(r$athlete_id), team_id = as.character(pw_id(r$team_id)), name = nm, stringsAsFactors = FALSE)
 }
+# ---- w1.13: preseason -- which teams' ESPN listing has turned over ----------------
+# Returns rows = this season's ESPN listing for the teams that pass (the roster the
+# projection uses for them) and status = one row per team: listed, arrivals (share
+# of the listing new to the team), departures (share of last season's listing gone),
+# source ("espn" or "prep") and why. See PW_ESPN_TURNOVER.
+pw_espn_preseason <- function(teams, yr = PRED_SEASON) {
+  ids <- teams$espn_id
+  status <- data.frame(team = ids, listed = 0L, arrivals = NA_real_, departures = NA_real_, source = "prep",
+                       why = "no listing in the ESPN file", stringsAsFactors = FALSE)
+  empty <- list(rows = NULL, status = status, file = FALSE, mode = PW_ROSTER_MODE)
+  if (PW_ROSTER_MODE == "prep") { status$why <- "WBB_ROSTER_MODE=prep"; empty$status <- status; return(empty) }
+  rd <- function(y, refresh) {
+    r <- tryCatch(pw_pq("espn_womens_college_basketball_rosters", sprintf("rosters_%d.parquet", y), refresh = refresh), error = function(e) NULL)
+    if (is.null(r) || !nrow(r)) return(NULL)
+    if (!is.null(r$season)) r <- r[as.integer(pw_num(r$season)) %in% y, ]
+    if (!nrow(r)) return(NULL)
+    col <- function(v) if (is.null(r[[v]])) rep(NA_character_, nrow(r)) else as.character(r[[v]])
+    out <- data.frame(athlete_id = pw_id(r$athlete_id), team_id = as.character(pw_id(r$team_id)),
+                      name = ifelse(is.na(col("display_name")), col("full_name"), col("display_name")),
+                      exp_years = pw_num(col("experience_years")), cls = col("experience_display_value"),
+                      height = col("height"), pos = col("position_abbreviation"), stringsAsFactors = FALSE)
+    out <- out[!is.na(out$athlete_id) & !is.na(out$team_id), ]
+    out[!duplicated(paste(out$athlete_id, out$team_id)), ]
+  }
+  new <- rd(yr, TRUE); old <- rd(yr - 1, FALSE)
+  if (is.null(new)) return(empty)
+  empty$file <- TRUE
+  # "Freshman" -> "Fr.", the prep sheet's class format
+  ab <- c(freshman = "Fr.", sophomore = "So.", junior = "Jr.", senior = "Sr.", graduate = "Gr.", "graduate student" = "Gr.", "redshirt freshman" = "R-Fr.")
+  k <- tolower(trimws(new$cls)); new$cls <- ifelse(k %in% names(ab), unname(ab[k]), new$cls)
+  for (i in seq_along(ids)) {
+    li <- new$athlete_id[new$team_id == ids[i]]
+    status$listed[i] <- length(li)
+    if (!length(li)) next
+    was <- if (is.null(old)) character(0) else old$athlete_id[old$team_id == ids[i]]
+    status$arrivals[i] <- mean(!li %in% was)
+    status$departures[i] <- if (length(was)) mean(!was %in% li) else NA
+    size_ok <- length(li) >= PW_ROSTER_SIZE[1] && length(li) <= PW_ROSTER_SIZE[2]
+    turned <- isTRUE(status$arrivals[i] >= PW_ESPN_TURNOVER) && (isTRUE(status$departures[i] >= PW_ESPN_TURNOVER) || !length(was))
+    if (PW_ROSTER_MODE == "live" && size_ok) { status$source[i] <- "espn"; status$why[i] <- "WBB_ROSTER_MODE=live" }
+    else if (size_ok && turned) { status$source[i] <- "espn"; status$why[i] <- "listing has turned over" }
+    else status$why[i] <- if (!size_ok) paste0("lists ", length(li), " players") else "listing still matches last season's"
+  }
+  list(rows = new[new$team_id %in% status$team[status$source == "espn"], ], status = status, file = TRUE, mode = PW_ROSTER_MODE)
+}
+
 pw_roster_sources <- function(ids, pgm, er) {
   played <- pgm[pgm$min > 0, ]
   ng <- tapply(pgm$game_id, factor(pgm$team_id, levels = ids), function(z) length(unique(z))); ng[is.na(ng)] <- 0
@@ -2549,9 +2637,15 @@ pw_run <- function() {
     snap_info <- list(mode = "frozen", built = snap$built)
   } else {
     prep <- pw_read_prep(file.path(OUT_DIR, PREP_SHEET_FILE))
-    message("  [predict] projecting 2026-27 rosters from ", PREP_SHEET_FILE, " ...")
+    # w1.13: each team's ESPN 2026-27 listing replaces its prep-sheet roster once it has turned over
+    es <- pw_espn_preseason(teams)
+    n_espn <- sum(es$status$source == "espn")
+    message("  [predict] 2026-27 rosters: ESPN listing for ", n_espn, " of ", nrow(teams), " teams, ", PREP_SHEET_FILE, " for ",
+            nrow(teams) - n_espn, if (!es$file) " (no ESPN 2026-27 roster file yet)" else if (n_espn == 0) " (the ESPN file is still last season's rosters)" else "", " ...")
     cal$newc <- pw_calibrate_newcomers(cal$H, cal$pm, prep)
-    P <- pw_project_2027(cal$H, cal, prep, teams, cal$vm)
+    P <- pw_project_2027(cal$H, cal, prep, teams, cal$vm, es$rows)
+    P$roster_src <- es$status; P$roster_src_file <- es$file
+    P$espn_ids <- if (is.null(es$rows)) NULL else es$rows[, c("athlete_id", "team_id")]
     mode <- if (!started) "preseason" else if (isTRUE(PW_REFREEZE)) "refrozen (PW_REFREEZE)" else "rebuilt after the season started (no snapshot found)"
     if (started) message("  WARNING: season has started; snapshot ", if (isTRUE(PW_REFREEZE)) "refrozen from the prep sheet" else "was missing and is being created now")
     snap <- pw_save_snapshot(P, prep, cal$newc, mode)
@@ -2782,9 +2876,25 @@ pw_payload <- function(teams, P, rt, pre, sim, g, cal, gm, nplayed, live, prep, 
   })
   # departures
   stt <- prep$stats; stt$athlete_id <- pw_id(stt$athlete_id)
-  dep <- stt[stt$`2026 Team` %in% teams$team & (is.na(stt$`2027 Team`) | stt$`2027 Team` != stt$`2026 Team`), ]
+  # w1.13: for a team whose roster is its ESPN listing, a departure is anyone from last
+  # season's team who isn't on it (destination: her ESPN team if listed elsewhere,
+  # else the prep sheet's 2027 Team, else "Not on 2026-27 roster")
+  rsrc <- P$roster_src; eids <- P$espn_ids
+  ets <- if (is.null(rsrc)) character(0) else rsrc$team[rsrc$source == "espn"]
+  stt$tid26 <- ids[match(stt$`2026 Team`, teams$team)]
+  moved <- is.na(stt$`2027 Team`) | stt$`2027 Team` != stt$`2026 Team`
+  if (length(ets) && !is.null(eids)) {
+    on_list <- paste(stt$athlete_id, stt$tid26) %in% paste(eids$athlete_id, eids$team_id)
+    el <- eids$team_id[match(stt$athlete_id, eids$athlete_id)]
+    in_e <- stt$tid26 %in% ets
+    moved[in_e] <- !on_list[in_e]
+    dest <- ifelse(!is.na(el) & el != stt$tid26, teams$team[match(el, teams$espn_id)],
+            ifelse(!is.na(stt$`2027 Team`) & stt$`2027 Team` != stt$`2026 Team`, stt$`2027 Team`, NA))
+    stt$`2027 Team`[in_e & moved] <- ifelse(is.na(dest[in_e & moved]), "Not on 2026-27 roster", dest[in_e & moved])
+  }
+  dep <- stt[stt$`2026 Team` %in% teams$team & moved, ]
   dep$v <- H26$pv$v[match(dep$athlete_id, H26$pv$athlete_id)]
-  dep$tid <- ids[match(dep$`2026 Team`, teams$team)]
+  dep$tid <- dep$tid26
   deps <- lapply(split(dep, dep$tid), function(x) {
     x <- x[order(-pw_num(x$total_minutes)), ]; x <- x[seq_len(min(nrow(x), 10)), ]
     lapply(seq_len(nrow(x)), function(k) list(x$athlete_display_name[k],
@@ -2818,6 +2928,13 @@ pw_payload <- function(teams, P, rt, pre, sim, g, cal, gm, nplayed, live, prep, 
     fiba_found = sum(f$status == "International (FIBA)"), nond1 = sum(f$status == "Transfer (non-D1)"),
     new_coaches = sum(teams$new_coach %in% 1), low_conf = sum(pre$pads >= 3, na.rm = TRUE),
     roster_players = sum(f$source != "pad"),
+    # w1.13: where each team's 2026-27 roster came from
+    roster_source = if (is.null(rsrc)) NULL else list(mode = PW_ROSTER_MODE, file = isTRUE(P$roster_src_file),
+      espn = sum(rsrc$source == "espn"), prep = sum(rsrc$source == "prep"), listed = sum(rsrc$listed > 0),
+      stale = sum(rsrc$source == "prep" & rsrc$why == "listing still matches last season's"),
+      espn_teams = teams$team[match(rsrc$team[rsrc$source == "espn"], ids)],
+      prep_teams = if (sum(rsrc$source == "espn") > 0) teams$team[match(rsrc$team[rsrc$source == "prep"], ids)] else character(0),
+      threshold = PW_ESPN_TURNOVER),
     unmatched_recruits = {
       rc <- prep$rec[prep$rec$year == PRED_SEASON - 1, ]
       miss <- rc[!pw_norm_name(rc$name) %in% f$rec_key[!is.na(f$rank)], ]

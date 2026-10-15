@@ -85,15 +85,14 @@ get_script_dir <- function() {
 # Season label follows sportsdataverse's convention: the year the season
 # ENDS in (e.g. the 2025-26 season is "2026"). Auto-detected from today's
 # date rather than a wehoop helper, for the same reason noted above.
-# Games start in November, so that's the rollover point -- from January
-# through October, the "current" season is still the one already in
-# progress or just completed (label = this year); only from November
-# onward does the new season's data start existing upstream at all
-# (label = next year). Override this directly if it ever guesses wrong,
-# e.g. in the first few days of a new season before its release file
-# exists yet.
+# w1.13: the rollover is October 1 -- the preseason belongs to the new season.
+# Until its first box scores are published the team pages fall back to the
+# season just finished (SEASON_FALLBACK below), while Team Rankings and the
+# Predictions tab show the new season's preseason ratings. From January
+# through September the "current" season is the one in progress or just
+# completed (label = this year). Override this directly if it ever guesses wrong.
 today <- Sys.Date()
-SEASON <- if (as.integer(format(today, "%m")) >= 11) {
+SEASON <- if (as.integer(format(today, "%m")) >= 10) {
   as.integer(format(today, "%Y")) + 1
 } else {
   as.integer(format(today, "%Y"))
@@ -156,11 +155,11 @@ read_parquet_release <- function(tag, filename) {
   nanoparquet::read_parquet(download_cached(paste0(GH_RELEASES, "/", tag, "/", filename), filename))
 }
 
-# Season rollover (w1.9): SEASON flips on Nov 1, often a day or two before the
-# new season's box-score release exists. Instead of stopping the whole build
-# (projections included), fall back to the season just finished and say so; the
-# Projections tab still shows the new season. Same for the crosswalk and rosters,
-# which can lag the box scores.
+# Season rollover (w1.9, w1.13): SEASON flips on Oct 1, a month before the new
+# season's box-score release exists. Instead of stopping the whole build
+# (predictions included), the team pages fall back to the season just finished;
+# Team Rankings and the Predictions tab still show the new season. Same for the
+# crosswalk and rosters, which can lag the box scores.
 read_season_rds <- function(tag, stem) {
   x <- tryCatch(read_rds_release(tag, paste0(stem, SEASON, ".rds")), error = function(e) NULL)
   if (!is.null(x) && nrow(x) > 0) return(x)
@@ -170,8 +169,8 @@ message("Loading team box scores ...")
 team_box <- read_season_rds("espn_womens_college_basketball_team_boxscores", "team_box_")
 SEASON_FALLBACK <- FALSE
 if (is.null(team_box)) {
-  message("  WARNING: no ", SEASON, " box scores published yet -- showing the ", SEASON - 1,
-          " season on the dashboards; the Projections tab is unaffected.")
+  message("  No ", SEASON - 1, "-", SEASON %% 100, " box scores published yet (preseason) -- team pages show ", SEASON - 2, "-",
+          (SEASON - 1) %% 100, " games; Team Rankings and the Predictions tab show ", SEASON - 1, "-", SEASON %% 100, ".")
   SEASON <- SEASON - 1; SEASON_FALLBACK <- TRUE
   team_box <- read_rds_release("espn_womens_college_basketball_team_boxscores", paste0("team_box_", SEASON, ".rds"))
 }
@@ -912,11 +911,13 @@ message("  box scores stored: ", length(ls(box_store)), " team-games, ",
 flow_json <- to_json(list(v = 1L, g = if (length(game_flow)) game_flow else setNames(list(), character(0))))
 generated_at <- format(Sys.time(), "%Y-%m-%d %H:%M")
 
-# ---- 2026-27 projections (predict_wbb.R) ------------------------------------
-# Roster-based preseason model + season simulation; see README "2026-27
-# Projections". Needs predict_wbb.R, wbb_2027_teams.csv and the prep sheet
-# (2027_Prep_Sheet_v2.xlsx) next to this script. If anything in it fails, the
-# rest of the dashboard still builds and the tab explains what went wrong.
+# ---- 2026-27 predictions (predict_wbb.R) ------------------------------------
+# Roster-based preseason model + season simulation; see README "Predictions".
+# Needs predict_wbb.R, wbb_2027_teams.csv and the prep sheet
+# (2027_Prep_Sheet_v2.xlsx) next to this script: rosters come from ESPN's 2026-27
+# listing team by team once it has turned over, the prep sheet otherwise (see
+# PW_ESPN_TURNOVER in predict_wbb.R). If anything in it fails, the rest of the
+# dashboard still builds and the tab explains what went wrong.
 # w1.9: everything below needs only the JSON strings built above, so release the
 # big tables (national player box, play-by-play shots, per-game stores) before the
 # 10,000-season simulation. On a 4 GB machine the build used to be killed here.
@@ -928,11 +929,11 @@ predict_payload <- NULL
 predict_json <- tryCatch({
   if (!file.exists(predict_file)) stop("predict_wbb.R not found next to build_dashboards.R")
   if (!pw_loaded) stop("predict_wbb.R couldn't be loaded (see the warning above)")
-  message("Building 2026-27 projections ...")
+  message("Building 2026-27 predictions ...")
   predict_payload <- pw_env$pw_run()
   to_json(predict_payload, digits = NA)
 }, error = function(e) {
-  message("  WARNING: prediction module failed -- the Projections tab will show this error. (", conditionMessage(e), ")")
+  message("  WARNING: prediction module failed -- the Predictions tab will show this error. (", conditionMessage(e), ")")
   as.character(jsonlite::toJSON(list(ok = FALSE, error = conditionMessage(e)), auto_unbox = TRUE))
 })
 
@@ -973,14 +974,18 @@ out_html <- sub("__PREDICT_JSON__", pack(predict_json), out_html, fixed = TRUE)
 # projected season is the one on the dashboards -- the projection's in-season
 # ratings (results + preseason prior), with the ridge fit for anyone it lacks
 ratings_payload <- local({
-  if (is.null(season_rat)) return(NULL)
-  tab <- season_rat$tab; src <- season_rat$source; h <- season_rat$h; mu <- season_rat$mu; tmu <- season_rat$tmu
   rn <- predict_payload$ratings_now
-  if (!is.null(rn) && pw_loaded && identical(as.integer(SEASON), as.integer(pw_env$PRED_SEASON))) {
+  use_pred <- !is.null(rn) && pw_loaded && identical(as.integer(SEASON), as.integer(pw_env$PRED_SEASON))
+  # w1.13: in the first days of the season (under 50 D1 games) there is no ridge fit;
+  # the prediction model's ratings (preseason prior + the games so far) still apply
+  if (is.null(season_rat) && !use_pred) return(NULL)
+  if (!is.null(season_rat)) { tab <- season_rat$tab; src <- season_rat$source; h <- season_rat$h; mu <- season_rat$mu; tmu <- season_rat$tmu }
+  else tab <- data.frame(team = character(0), O = numeric(0), D = numeric(0), T = numeric(0), games = integer(0), sd = numeric(0))
+  if (use_pred) {
     pr <- data.frame(team = rn$team, O = rn$O, D = rn$D, T = rn$T, games = rn$games, sd = rn$sd, stringsAsFactors = FALSE)
     # teams the projection doesn't carry keep their ridge fit (same model, both centred on D1 average)
     extra <- tab[!tab$team %in% pr$team, ]
-    tab <- rbind(pr, extra); src <- paste0("projection model, ", rn$mode, " (results + preseason prior)")
+    tab <- rbind(pr, extra); src <- paste0("prediction model, ", rn$mode, " (results + preseason prior)")
     h <- rn$h; mu <- rn$mu; tmu <- rn$tmu
   }
   list(source = src, h = round(h, 3), mu = round(mu, 3), tmu = round(tmu, 3), sigma = round(GAME_SIGMA_PTS, 3),

@@ -29,7 +29,7 @@ filtered list, so sorting by a different stat re-ranks 1 to N by that
 stat instead. Net Rtg is Adj. Offense minus Adj. Defense.
 
 **As of w1.9, Adj. Offense, Adj. Defense, Net Rtg, and Tempo come from the
-same ridge model as the Projections tab, fitted in the build and shipped
+same ridge model as the Predictions tab, fitted in the build and shipped
 into the page (see "w1.9" below). The paragraphs here describing an
 iterative in-page model, a margin-of-victory dampener and a fixed home-court
 constant describe w1.8 and survive only as the page's fallback when a build
@@ -514,7 +514,7 @@ the file.
   and similar reads.
 - **Players to watch:** in season, each team's top 8 by minutes (PPG, RPG,
   APG, TS%, USG%, BPR, BPM) with injury tags; in the preseason, the
-  projected rotation from the Projections tab. Minutes-weighted rotation
+  projected rotation from the Predictions tab. Minutes-weighted rotation
   height for both.
 - **Recent form** (last 10, margins chart, performance rating vs season) and
   **history** (meetings, common opponents and how each team did against
@@ -628,7 +628,7 @@ season's games load, everything switches over on its own.
 
 The home-court and neutral-site fixes change Adj O/D, Net Rtg and ranks
 slightly, mostly for teams with lopsided home/road schedules or many
-neutral-site games. The Projections tab is unaffected: it already read
+neutral-site games. The Predictions tab is unaffected: it already read
 neutral sites from the schedule and fitted its own home court.
 
 ## w1.8c: non-D1 games and D1 membership
@@ -648,6 +648,71 @@ neutral sites from the schedule and fitted its own home court.
   added, and so does the data stamp.
 - The page takes its team count from the teams loaded, instead of a fixed
   361.
+
+## w1.13: the page moves to 2026-27
+
+### Team Rankings shows the 2026-27 season
+From **October 1** the page belongs to the new season (`build_dashboards.R` rolls
+`SEASON` over on Oct 1 instead of Nov 1). Until the first 2026-27 box scores are
+published the team pages still need last season's games, so the build falls back
+to them, and the page runs in **preseason mode**:
+
+- **Team Rankings** shows the 2026-27 preseason ranking from the prediction model:
+  Rk, Net, AdjO, AdjD, Tempo, projected record and conference record, NCAA odds,
+  returning minutes, last season's final rank and the change (▲/▼). Conferences in
+  the filter are the 2026-27 ones. The Games / Opponent-rank / Min. games filters are
+  hidden until there are games to filter.
+- The header stamp reads "2026–27 preseason". The Player Leaderboard, Shot Zones,
+  Conferences and the Stat Corner are labelled as 2025–26 final numbers, because
+  there are no 2026-27 games yet.
+- **Once the first 2026-27 games are in**, the build switches the dashboards to
+  2026-27 and Team Rankings goes back to its full table. Its ratings come from the
+  same prediction model (results plus the preseason projection as a prior), so the
+  ranks start from the preseason order and move with every game. This now also holds
+  in the first days of the season, before there are 50 D1 games for the separate
+  ridge fit (that used to drop the page to its in-browser fallback ratings).
+
+### "2026-27 Projections" is now the **Predictions** tab
+Same content and purpose: preseason predictions, rest-of-season and future-game
+predictions from 10,000 simulated seasons, updating as results come in. Old links
+to `#projections` still open it; `#predictions` works too.
+
+### Rosters: ESPN's 2026-27 listing, team by team, once it's real
+The goal is to move off the prep sheet onto `load_wbb_rosters(2027)` (the
+`espn_womens_college_basketball_rosters/rosters_2027` release). As of Oct 14, 2026
+that file is **still last season's rosters re-labelled 2027** (uploaded Oct 11):
+4,908 of its 4,929 D1 rows are on the same team as in 2026, 1 of the prep sheet's
+1,086 transfers is at her new school, 1,589 of 1,684 departed players are still
+listed, none of the 1,532 freshmen/newcomers appear, class years haven't advanced,
+and 6 D1 teams are missing. Using it now would project every team with last year's
+roster.
+
+So the switch is automatic and per team (`pw_espn_preseason()` in `predict_wbb.R`):
+a team's ESPN listing replaces its prep-sheet roster once it has turned over, meaning
+at least 15% of the listed players are new to the team **and** at least 15% of last
+season's listing is gone (`PW_ESPN_TURNOVER`), with 9-24 players listed. On the prep
+sheet's real 2026-27 rosters 346 of 362 teams clear that bar; on the current stale
+file, 0 of 357 do. Teams that don't clear it keep the prep sheet, so a half-updated
+ESPN file is handled team by team.
+
+For a team on its ESPN listing: every listed player is on the roster with her ESPN
+id (no name matching needed); last season's line, previous school and the non-D1
+transfer valuation still come from the prep sheet's stats tab when she's in it;
+recruit rank and FIBA numbers attach by name as before; recruits ESPN doesn't list
+are not added back; departures are everyone from last season's team not on the
+listing. The Predictions tab's status line, the Model Report Card's Data checks and
+the build log all say how many teams use each source.
+
+`WBB_ROSTER_MODE=prep` keeps the prep sheet for everyone; `WBB_ROSTER_MODE=live`
+uses every ESPN listing of plausible size. The prep sheet must stay in the folder:
+it is still where recruit ranks, FIBA youth stats and last season's stat lines come
+from. The preseason snapshot freezes whichever roster each team had at the first
+game, as before.
+
+*Tested:* full builds against the real ESPN file (0 teams switch; every player
+projection identical to w1.12) and against a synthetic updated file (242 teams'
+listings replaced with their prep-sheet 2026-27 rosters, 121 left stale); the page
+was checked in Chromium (desktop and phone width) with no script errors.
 
 ## w1.12: minutes flags (a key player's minutes fall off a cliff)
 
@@ -914,7 +979,7 @@ teammates' can improve the team's defensive rating.
 - **Season rollover** *(not run)*: when `SEASON` flips on Nov 1 before
   the new box scores exist, the build uses the season just finished
   (flagged in the data stamp as `season_fallback`) instead of stopping.
-  Crosswalk and rosters fall back too. The Projections tab is unaffected.
+  Crosswalk and rosters fall back too. The Predictions tab is unaffected. (w1.13: the rollover is now Oct 1.)
 - **Download validation** *(not run)*: a file replaces the cache only if
   it opens (rds reads, parquet footers present). A truncated transfer
   used to be accepted.
@@ -1107,20 +1172,20 @@ markup directly.
 
 ---
 
-## 2026-27 Projections (new tab)
+## Predictions (2026-27; called "2026-27 Projections" before w1.13)
 
-A roster-based preseason model for 2026-27 plus a full season simulation, shown in the **2026-27 Projections** tab. It updates itself as the season is played.
+A roster-based preseason model for 2026-27 plus a full season simulation, shown in the **Predictions** tab. It updates itself as the season is played.
 
 ### Files (keep all of these in the same folder)
 
 | File | What it is |
 |---|---|
 | `build_dashboards.R` | Same build script, now also runs the projection module (needs the `readxl` package, auto-installed). |
-| `dashboard_template.html` | Same template plus the Projections tab. |
+| `dashboard_template.html` | Same template plus the Predictions tab. |
 | `predict_wbb.R` | The projection module. Sourced by the build script; if it fails, the rest of the dashboard still builds and the tab shows the error. |
 | `wbb_2027_teams.csv` | 2026-27 conferences (from the Team Preview sheets), league game counts, conference-tournament field sizes, automatic bids, coaching changes. Edit freely. |
 | `wbb_2027_roster_overrides.csv` | Optional manual fixes: `name, team, action, note, athlete_id`, where action is `keep` or `exclude`. Use it for players the prep sheet can't see, such as a recruit who redshirted, or who left and hasn't landed. Notes show up on the player's row. Filling in `athlete_id` targets one stats-tab row instead of everyone with that name (see Peyton Jones below). |
-| `2027_Prep_Sheet_v2.xlsx` | **Your prep sheet — copy it into this folder.** The `2027 Team` column is the roster source of truth. |
+| `2027_Prep_Sheet_v2.xlsx` | **Your prep sheet — keep it in this folder.** Roster source for every team whose ESPN 2026-27 listing hasn't turned over yet (w1.13), and the source of recruit ranks, FIBA youth stats and last season's stat lines for everyone. |
 | `wbb_injuries.csv` | Injuries, kept by hand (ships with the header only). Read before and during the season; see "Injuries" below. |
 | `wbb_2027_preseason_snapshot.rds` | *Written by the build.* Every preseason run saves the projection it made from the prep sheet here. Once the season starts, runs read this instead of the prep sheet. Don't delete it in season. |
 | `wbb_2027_preseason_players.csv` | *Written by the build.* A readable copy of the snapshot: every player's preseason projected minutes and values. |
@@ -1287,7 +1352,7 @@ If either lookup fails, that field is left empty and the slate falls back (no ti
 
 **Where the roster comes from.**
 
-- **Before the first game:** the prep sheet, as before. Every preseason run saves what it produced from the sheet (each player's projection, plus the parsed sheet) to `wbb_2027_preseason_snapshot.rds`, and a readable copy to `wbb_2027_preseason_players.csv`. The last run before the first game is the one the season uses.
+- **Before the first game:** each team's ESPN 2026-27 listing once it has turned over, otherwise the prep sheet (w1.13, see above). Every preseason run saves what it produced from the sheet (each player's projection, plus the parsed sheet) to `wbb_2027_preseason_snapshot.rds`, and a readable copy to `wbb_2027_preseason_players.csv`. The last run before the first game is the one the season uses.
 - **Once any 2026-27 game between D1 teams is in the data:** runs read the snapshot and never open the prep sheet. Late edits to the sheet can't move the preseason baseline. If you find a real mistake after the season starts, set `PW_REFREEZE <- TRUE` in `predict_wbb.R` for one run to rebuild the snapshot from the sheet, then set it back.
 - **Each team switches to this season's roster at its first game.** Its roster is everyone in its 2026-27 box scores, plus ESPN's roster listing once that listing looks current (at least 90% of the players who have played for the team are on it, `PW_ROSTER_FRESH`). As of September 2026 ESPN's "2027" roster file is still last season's rosters, so it is never trusted just for existing. Teams that haven't played keep the preseason roster. Players who join later (midseason transfers, walk-ons) are added with their box-score value; players who leave drop off. Data checks lists joins, departures, and teams whose ESPN listing looks out of date.
 - **Player projections carry over.** A player's preseason projection (recruit rank, FIBA play, transfer adjustment) stays her prior wherever she ends up, and fades as her 2026-27 minutes build, exactly as before.
